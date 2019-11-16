@@ -1,9 +1,12 @@
 defmodule IslandsEngine.Game do
-  use GenServer
+  # 参数start_link还是能正常传递到init方法的
+  use GenServer, start: {__MODULE__, :start_link, []}, restart: :transient
 
   alias IslandsEngine.{Board, Coordinate, Guesses, Island, Rules}
 
   @players [:player1, :player2]
+  # 超时回收Process
+  @timeout 1000 * 60 * 60
 
   def via_tuple(name), do: {:via, Registry, {Registry.Game, name}}
 
@@ -28,9 +31,15 @@ defmodule IslandsEngine.Game do
   end
 
   def init(name) do
+    IO.inspect("GenServer game init with name: #{name}")
+    send(self(), {:set_state, name})
+    {:ok, fresh_state(name)}
+  end
+
+  def fresh_state(name) do
     player1 = %{name: name, board: Board.new(), guesses: Guesses.new()}
     player2 = %{name: nil, board: Board.new(), guesses: Guesses.new()}
-    {:ok, %{player1: player1, player2: player2, rules: Rules.new()}}
+    %{player1: player1, player2: player2, rules: Rules.new()}
   end
 
   def handle_call({:add_player, name}, _from, state_data) do
@@ -97,6 +106,32 @@ defmodule IslandsEngine.Game do
     end
   end
 
+  def handle_info(:timeout, state_data) do
+    {:stop, {:shutdown, :timeout}, state_data}
+  end
+
+  def handle_info({:set_state, name}, _state_data) do
+    state_data =
+      case :ets.lookup(:game_state, name) do
+        [] -> fresh_state(name)
+        [{_key, state}] -> state
+      end
+
+    :ets.insert(:game_state, {name, state_data})
+
+    {:noreply, state_data, @timeout}
+  end
+
+  # 超时的需要清理，其他原因的可以恢复
+  def terminate({:shutdown, :timeout}, state_data) do
+    :ets.delete(:game_state, state_data.player1.name)
+    :ok
+  end
+
+  def terminate(_reason, _state) do
+    :ok
+  end
+
   defp update_play2_name(state_data, name) do
     put_in(state_data.player2.name, name)
   end
@@ -110,7 +145,8 @@ defmodule IslandsEngine.Game do
   end
 
   defp reply_success(state_data, reply) do
-    {:reply, reply, state_data}
+    :ets.insert(:game_state, {state_data.player1.name, state_data})
+    {:reply, reply, state_data, @timeout}
   end
 
   defp player_board(state_data, player) do
@@ -126,3 +162,11 @@ defmodule IslandsEngine.Game do
     end)
   end
 end
+
+# 方法1
+# alias IslandsEngine.Game 
+#   start_link/2 
+# {:ok, sup} = Supervisor.start_link([Game], strategy: :simple_one_for_one)
+
+# 方法2 
+# 创建一个supervisor module:  game_supervisor.ex
