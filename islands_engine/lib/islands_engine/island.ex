@@ -2,6 +2,7 @@ defmodule IslandsEngine.Island do
   alias IslandsEngine.{Coordinate, Island}
 
   @enforce_keys [:coordinates, :hit_coordiantes]
+  @derive Jason.Encoder
   defstruct [:coordinates, :hit_coordiantes]
 
   def new(type, %Coordinate{} = upper_left) do

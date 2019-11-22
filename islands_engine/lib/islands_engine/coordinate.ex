@@ -2,6 +2,8 @@ defmodule IslandsEngine.Coordinate do
   alias __MODULE__
 
   @enforce_keys [:row, :col]
+
+  @derive Jason.Encoder
   defstruct [:row, :col]
 
   @board_range 1..10
