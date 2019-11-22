@@ -4,18 +4,18 @@ defmodule IslandsInterfaceWeb.GameChannel do
   alias IslandsEngine.{Game, GameSupervisor}
   alias IslandsInterfaceWeb.Presence
 
-  def join("game:" <> _player, %{"scree_name" => scree_name}, socket) do
-    if authorized?(socket, scree_name) do
-      send(self(), {:after_join, scree_name})
+  def join("game:" <> _player, %{"screen_name" => screen_name}, socket) do
+    if authorized?(socket, screen_name) do
+      send(self(), {:after_join, screen_name})
       {:ok, socket}
     else
       {:error, %{reason: "unauthorized"}}
     end
   end
 
-  def handle_info({:after_join, scree_name}, socket) do
+  def handle_info({:after_join, screen_name}, socket) do
     {:ok, _} =
-      Presence.track(socket, scree_name, %{
+      Presence.track(socket, screen_name, %{
         online_at: inspect(System.system_time(:seconds))
       })
 
@@ -105,8 +105,8 @@ defmodule IslandsInterfaceWeb.GameChannel do
     end
   end
 
-  defp authorized?(socket, scree_name) do
-    number_of_players(socket) < 2 && !existing_player?(socket, scree_name)
+  defp authorized?(socket, screen_name) do
+    number_of_players(socket) < 2 && !existing_player?(socket, screen_name)
   end
 
   defp number_of_players(socket) do
@@ -116,10 +116,10 @@ defmodule IslandsInterfaceWeb.GameChannel do
     |> length()
   end
 
-  defp existing_player?(socket, scree_name) do
+  defp existing_player?(socket, screen_name) do
     socket
     |> Presence.list()
-    |> Map.has_key?(scree_name)
+    |> Map.has_key?(screen_name)
   end
 
   defp via("game:" <> player), do: Game.via_tuple(player)
