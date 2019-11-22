@@ -1,3 +1,5 @@
+require Protocol
+
 defmodule IslandsEngine.Island do
   alias IslandsEngine.{Coordinate, Island}
 
@@ -53,3 +55,5 @@ defmodule IslandsEngine.Island do
   defp offsets(:s_shape), do: [{0, 1}, {0, 2}, {1, 0}, {1, 1}]
   defp offsets(_), do: {:error, :invalid_island_type}
 end
+
+Protocol.derive(Jason.Encoder, MapSet)
